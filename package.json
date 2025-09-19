@@ -1,0 +1,20 @@
+{
+  "name": "sharp-service",
+  "private": true,
+  "type": "module",
+  "version": "1.0.0",
+  "description": "Streaming image resize service powered by sharp",
+  "scripts": {
+    "start": "node server.js",
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev"
+  },
+  "dependencies": {
+    "@cloudflare/containers": "^0.0.28",
+    "fastify": "^4.28.1",
+    "sharp": "^0.33.4"
+  },
+  "devDependencies": {
+    "wrangler": "^4.38.0"
+  }
+}

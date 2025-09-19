@@ -1,0 +1,7 @@
+name = "sharp-service"
+main = "src/index.js"
+compatibility_date = "2024-09-19"
+
+[[containers]]
+class_name = "SharpService"
+image = "./Dockerfile"

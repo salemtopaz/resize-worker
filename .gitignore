@@ -1,0 +1,11 @@
+node_modules/
+.wrangler/
+*.jpg
+*.png
+*.jpeg
+*.webp
+*.avif
+npm-debug.log*
+.env
+.env.local
+.DS_Store

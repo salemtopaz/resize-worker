@@ -1,0 +1,26 @@
+{
+  "name": "sharp-service",
+  "compatibility_date": "2024-09-19",
+  "compatibility_flags": ["durable_object_alarms"],
+  "main": "src/index.js",
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "SHARP_SERVICE",
+        "class_name": "SharpService"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_classes": ["SharpService"]
+    }
+  ],
+  "containers": [
+    {
+      "class_name": "SharpService",
+      "image": "./Dockerfile"
+    }
+  ]
+}
