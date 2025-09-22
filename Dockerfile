@@ -1,14 +1,8 @@
-FROM node:20-bookworm-slim
-
+FROM node:20-alpine
 ENV NODE_ENV=production
 WORKDIR /app
-
-COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev
-
-COPY server.js ./
-
+COPY package*.json ./
+RUN npm ci
+COPY . .
 EXPOSE 8080
 CMD ["npm", "start"]
-
-

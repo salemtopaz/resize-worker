@@ -2,6 +2,17 @@ name = "sharp-service"
 main = "src/index.js"
 compatibility_date = "2024-09-19"
 
+[[durable_objects.bindings]]
+name = "SHARP_SERVICE"
+class_name = "SharpService"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["SharpService"]
+
 [[containers]]
 class_name = "SharpService"
 image = "./Dockerfile"
+
+[observability]
+enabled = true
