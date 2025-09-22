@@ -1,6 +1,7 @@
 name = "image-transformer"
 main = "src/index.js"
 compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
 
 [[durable_objects.bindings]]
 name = "IMAGE_TRANSFORMER"
