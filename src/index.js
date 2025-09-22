@@ -80,29 +80,110 @@ export class SharpService {
       }
     }
 
-    // Forward all requests to the container
-    // The container runs your Sharp service (server.js)
-    // Since we can't use super.fetch(), we'll handle container communication directly
-    try {
-      // This is where the container would handle the request
-      // For now, return a response indicating the container is processing
-      return new Response(JSON.stringify({
-        message: "Container is processing request",
-        path: url.pathname,
-        params: Object.fromEntries(url.searchParams),
-        timestamp: new Date().toISOString()
-      }), {
-        headers: { 'Content-Type': 'application/json' }
-      });
-    } catch (error) {
-      return new Response(JSON.stringify({
-        error: "Container processing failed",
-        details: error.message
-      }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      });
+    // Handle image resizing directly in the Durable Object
+    if (url.pathname === '/resize') {
+      try {
+        const imageUrl = url.searchParams.get('url');
+        const width = Number(url.searchParams.get('w'));
+        const height = Number(url.searchParams.get('h'));
+        const format = url.searchParams.get('format') || 'jpeg';
+        const quality = Number(url.searchParams.get('q')) || 80;
+
+        if (!imageUrl || !width || !height) {
+          return new Response('Missing required parameters: url, w, h', { status: 400 });
+        }
+
+        // Fetch the original image
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 15000);
+        
+        const resp = await fetch(imageUrl, { 
+          redirect: 'follow', 
+          signal: controller.signal 
+        });
+        clearTimeout(timeout);
+        
+        if (!resp.ok || !resp.body) {
+          return new Response('Failed to fetch image', { status: 400 });
+        }
+
+        // Validate content type
+        const contentType = (resp.headers.get('content-type') || '').toLowerCase();
+        if (!contentType.startsWith('image/') && !contentType.startsWith('application/octet-stream')) {
+          return new Response('URL does not point to an image', { status: 400 });
+        }
+
+        // Get image buffer
+        const imageBuffer = Buffer.from(await resp.arrayBuffer());
+        
+        // Import sharp dynamically (since it might not be available in Workers runtime)
+        try {
+          const sharp = (await import('sharp')).default;
+          
+          let transformer = sharp(imageBuffer).resize({ width, height, fit: 'cover' });
+
+          switch (format.toLowerCase()) {
+            case 'jpeg':
+            case 'jpg':
+              transformer = transformer.jpeg({ quality, progressive: true, mozjpeg: true });
+              break;
+            case 'webp':
+              transformer = transformer.webp({ quality });
+              break;
+            case 'avif':
+              transformer = transformer.avif({ quality });
+              break;
+            case 'png':
+              transformer = transformer.png({ compressionLevel: Math.round(quality / 10) });
+              break;
+            default:
+              transformer = transformer.jpeg({ quality, progressive: true, mozjpeg: true });
+              break;
+          }
+
+          const processedBuffer = await transformer.toBuffer();
+          
+          return new Response(processedBuffer, {
+            headers: { 
+              'Content-Type': format === 'png' ? 'image/png' : 
+                            format === 'webp' ? 'image/webp' :
+                            format === 'avif' ? 'image/avif' : 'image/jpeg',
+              'Cache-Control': 'public, max-age=31536000'
+            }
+          });
+          
+        } catch (sharpError) {
+          // Sharp not available in Workers runtime
+          return new Response(JSON.stringify({
+            error: "Sharp not available in Workers runtime",
+            message: "Image processing requires container deployment",
+            details: sharpError.message
+          }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+
+      } catch (error) {
+        return new Response(JSON.stringify({
+          error: "Image processing failed",
+          details: error.message
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
     }
+
+    // For non-resize requests, return container status
+    return new Response(JSON.stringify({
+      message: "Container is ready",
+      path: url.pathname,
+      params: Object.fromEntries(url.searchParams),
+      timestamp: new Date().toISOString()
+    }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 }
 
