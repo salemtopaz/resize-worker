@@ -80,79 +80,33 @@ export class SharpService {
       }
     }
 
-    // Handle image resizing directly in the Durable Object
+    // Handle image resizing by forwarding to container via service binding
     if (url.pathname === '/resize') {
+      const imageUrl = url.searchParams.get('url');
+      const width = url.searchParams.get('w');
+      const height = url.searchParams.get('h');
+      const format = url.searchParams.get('format') || 'jpeg';
+      const quality = url.searchParams.get('q') || '80';
+
+      if (!imageUrl || !width || !height) {
+        return new Response('Missing required parameters: url, w, h', { status: 400 });
+      }
+
+      // Log the request for debugging
+      await this.sql.exec(`
+        INSERT INTO image_processing_logs (image_url, dimensions, format) 
+        VALUES (?, ?, ?)
+      `, imageUrl, `${width}x${height}`, format);
+
       try {
-        const imageUrl = url.searchParams.get('url');
-        const width = Number(url.searchParams.get('w'));
-        const height = Number(url.searchParams.get('h'));
-        const format = url.searchParams.get('format') || 'jpeg';
-        const quality = Number(url.searchParams.get('q')) || 80;
-
-        if (!imageUrl || !width || !height) {
-          return new Response('Missing required parameters: url, w, h', { status: 400 });
-        }
-
-        // Fetch the original image
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 15000);
-        
-        const resp = await fetch(imageUrl, { 
-          redirect: 'follow', 
-          signal: controller.signal 
-        });
-        clearTimeout(timeout);
-        
-        if (!resp.ok || !resp.body) {
-          return new Response('Failed to fetch image', { status: 400 });
-        }
-
-        // Validate content type
-        const contentType = (resp.headers.get('content-type') || '').toLowerCase();
-        if (!contentType.startsWith('image/') && !contentType.startsWith('application/octet-stream')) {
-          return new Response('URL does not point to an image', { status: 400 });
-        }
-
-        // Get image buffer
-        const imageBuffer = Buffer.from(await resp.arrayBuffer());
-        
-        // Forward the request to the container
-        // The container will handle the Sharp processing
-        try {
-          // Create a new request to forward to the container
-          const containerRequest = new Request(request.url, {
-            method: request.method,
-            headers: request.headers,
-            body: request.body
-          });
-          
-          // This should forward to the containerized Sharp service
-          // The container runs on port 8080 and handles /resize
-          return new Response(JSON.stringify({
-            message: "Container processing request",
-            note: "This should be handled by the containerized Sharp service",
-            url: imageUrl,
-            dimensions: `${width}x${height}`,
-            format: format,
-            quality: quality
-          }), {
-            headers: { 'Content-Type': 'application/json' }
-          });
-          
-        } catch (containerError) {
-          return new Response(JSON.stringify({
-            error: "Container communication failed",
-            details: containerError.message
-          }), {
-            status: 500,
-            headers: { 'Content-Type': 'application/json' }
-          });
-        }
-
+        // Forward request to containerized Sharp service via service binding
+        const containerResponse = await this.env.SHARP_CONTAINER.fetch(request);
+        return containerResponse;
       } catch (error) {
         return new Response(JSON.stringify({
-          error: "Image processing failed",
-          details: error.message
+          error: "Container service unavailable",
+          details: error.message,
+          fallback: "Service binding failed"
         }), {
           status: 500,
           headers: { 'Content-Type': 'application/json' }

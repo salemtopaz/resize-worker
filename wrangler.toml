@@ -15,5 +15,9 @@ new_classes = ["SharpService"]
 class_name = "SharpService"
 image = "./Dockerfile"
 
+[[services]]
+binding = "SHARP_CONTAINER"
+service = "sharp-service"
+
 [observability]
 enabled = true
