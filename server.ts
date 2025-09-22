@@ -1,6 +1,5 @@
 import { Hono } from 'hono'
 import sharp from 'sharp'
-import { Buffer } from 'node:buffer'
 
 const app = new Hono()
 
@@ -26,8 +25,8 @@ app.get('/resize', async (c) => {
 
     const imageBuffer = await response.arrayBuffer()
     
-    // Process with Sharp
-    let transformer = sharp(Buffer.from(imageBuffer))
+    // Process with Sharp - Sharp can handle ArrayBuffer directly
+    let transformer = sharp(imageBuffer)
       .resize(width, height, { fit: 'cover' })
 
     // Apply format and quality
