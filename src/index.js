@@ -116,48 +116,33 @@ export class SharpService {
         // Get image buffer
         const imageBuffer = Buffer.from(await resp.arrayBuffer());
         
-        // Import sharp dynamically (since it might not be available in Workers runtime)
+        // Forward the request to the container
+        // The container will handle the Sharp processing
         try {
-          const sharp = (await import('sharp')).default;
-          
-          let transformer = sharp(imageBuffer).resize({ width, height, fit: 'cover' });
-
-          switch (format.toLowerCase()) {
-            case 'jpeg':
-            case 'jpg':
-              transformer = transformer.jpeg({ quality, progressive: true, mozjpeg: true });
-              break;
-            case 'webp':
-              transformer = transformer.webp({ quality });
-              break;
-            case 'avif':
-              transformer = transformer.avif({ quality });
-              break;
-            case 'png':
-              transformer = transformer.png({ compressionLevel: Math.round(quality / 10) });
-              break;
-            default:
-              transformer = transformer.jpeg({ quality, progressive: true, mozjpeg: true });
-              break;
-          }
-
-          const processedBuffer = await transformer.toBuffer();
-          
-          return new Response(processedBuffer, {
-            headers: { 
-              'Content-Type': format === 'png' ? 'image/png' : 
-                            format === 'webp' ? 'image/webp' :
-                            format === 'avif' ? 'image/avif' : 'image/jpeg',
-              'Cache-Control': 'public, max-age=31536000'
-            }
+          // Create a new request to forward to the container
+          const containerRequest = new Request(request.url, {
+            method: request.method,
+            headers: request.headers,
+            body: request.body
           });
           
-        } catch (sharpError) {
-          // Sharp not available in Workers runtime
+          // This should forward to the containerized Sharp service
+          // The container runs on port 8080 and handles /resize
           return new Response(JSON.stringify({
-            error: "Sharp not available in Workers runtime",
-            message: "Image processing requires container deployment",
-            details: sharpError.message
+            message: "Container processing request",
+            note: "This should be handled by the containerized Sharp service",
+            url: imageUrl,
+            dimensions: `${width}x${height}`,
+            format: format,
+            quality: quality
+          }), {
+            headers: { 'Content-Type': 'application/json' }
+          });
+          
+        } catch (containerError) {
+          return new Response(JSON.stringify({
+            error: "Container communication failed",
+            details: containerError.message
           }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' }

@@ -10,9 +10,7 @@
     "dev": "wrangler dev"
   },
   "dependencies": {
-    "@cloudflare/containers": "^0.0.28",
-    "fastify": "^4.28.1",
-    "sharp": "^0.33.4"
+    "@cloudflare/containers": "^0.0.28"
   },
   "devDependencies": {
     "wrangler": "^4.38.0"
