@@ -80,13 +80,13 @@ export class SharpService {
       }
     }
 
-    // Handle image resizing by forwarding to container via service binding
+    // Handle image resizing - this Durable Object runs in the container with Sharp
     if (url.pathname === '/resize') {
       const imageUrl = url.searchParams.get('url');
-      const width = url.searchParams.get('w');
-      const height = url.searchParams.get('h');
+      const width = Number(url.searchParams.get('w'));
+      const height = Number(url.searchParams.get('h'));
       const format = url.searchParams.get('format') || 'jpeg';
-      const quality = url.searchParams.get('q') || '80';
+      const quality = Number(url.searchParams.get('q')) || 80;
 
       if (!imageUrl || !width || !height) {
         return new Response('Missing required parameters: url, w, h', { status: 400 });
@@ -99,14 +99,73 @@ export class SharpService {
       `, imageUrl, `${width}x${height}`, format);
 
       try {
-        // Forward request to containerized Sharp service via service binding
-        const containerResponse = await this.env.SHARP_CONTAINER.fetch(request);
-        return containerResponse;
+        // Fetch the original image
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 15000);
+        
+        const resp = await fetch(imageUrl, { 
+          redirect: 'follow', 
+          signal: controller.signal 
+        });
+        clearTimeout(timeout);
+        
+        if (!resp.ok || !resp.body) {
+          return new Response('Failed to fetch image', { status: 400 });
+        }
+
+        // Validate content type
+        const contentType = (resp.headers.get('content-type') || '').toLowerCase();
+        if (!contentType.startsWith('image/') && !contentType.startsWith('application/octet-stream')) {
+          return new Response('URL does not point to an image', { status: 400 });
+        }
+
+        // Get image buffer
+        const imageBuffer = await resp.arrayBuffer();
+        
+        // Import and use Sharp (should be available in the container)
+        const sharp = (await import('sharp')).default;
+        
+        let transformer = sharp(imageBuffer).resize({ width, height, fit: 'cover' });
+
+        let contentTypeHeader = 'image/jpeg';
+        switch (format.toLowerCase()) {
+          case 'jpeg':
+          case 'jpg':
+            transformer = transformer.jpeg({ quality, progressive: true, mozjpeg: true });
+            contentTypeHeader = 'image/jpeg';
+            break;
+          case 'webp':
+            transformer = transformer.webp({ quality });
+            contentTypeHeader = 'image/webp';
+            break;
+          case 'avif':
+            transformer = transformer.avif({ quality });
+            contentTypeHeader = 'image/avif';
+            break;
+          case 'png':
+            transformer = transformer.png({ compressionLevel: Math.round(quality / 10) });
+            contentTypeHeader = 'image/png';
+            break;
+          default:
+            transformer = transformer.jpeg({ quality, progressive: true, mozjpeg: true });
+            contentTypeHeader = 'image/jpeg';
+            break;
+        }
+
+        const processedBuffer = await transformer.toBuffer();
+        
+        return new Response(processedBuffer, {
+          headers: { 
+            'Content-Type': contentTypeHeader,
+            'Cache-Control': 'public, max-age=31536000'
+          }
+        });
+        
       } catch (error) {
         return new Response(JSON.stringify({
-          error: "Container service unavailable",
+          error: "Image processing failed",
           details: error.message,
-          fallback: "Service binding failed"
+          stack: error.stack
         }), {
           status: 500,
           headers: { 'Content-Type': 'application/json' }
