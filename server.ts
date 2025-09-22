@@ -25,7 +25,6 @@ app.get('/resize', async (c) => {
 
     const imageBuffer = await response.arrayBuffer()
     
-    // Process with Sharp - Sharp can handle ArrayBuffer directly
     let transformer = sharp(imageBuffer)
       .resize(width, height, { fit: 'cover' })
 

@@ -2,12 +2,16 @@ name = "image-transformer"
 main = "src/index.js"
 compatibility_date = "2024-09-23"
 
-[[services]]
-binding = "IMAGE_TRANSFORMER"
-service = "image-transformer-container"
+[[durable_objects.bindings]]
+name = "IMAGE_TRANSFORMER"
+class_name = "ImageTransformer"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["ImageTransformer"]
 
 [[containers]]
-name = "image-transformer-container"
+class_name = "ImageTransformer"
 image = "./Dockerfile"
 
 [observability]

@@ -1,24 +1,26 @@
-export default {
-  async fetch(request, env, ctx) {
-    // Forward all requests to the container service
-    if (env.IMAGE_TRANSFORMER) {
-      return env.IMAGE_TRANSFORMER.fetch(request);
-    }
-    
-    // Fallback for local development without container
-    const url = new URL(request.url);
-    if (url.pathname === '/resize') {
-      return new Response(JSON.stringify({
-        message: "Container not available in local development",
-        note: "Deploy to test actual image processing",
-        params: Object.fromEntries(url.searchParams)
-      }), {
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-    
-    return new Response('Image Transformer Service', {
+// Simple Durable Object that runs the container
+export class ImageTransformer {
+  constructor(state, env) {
+    this.state = state;
+    this.env = env;
+  }
+
+  async fetch(request) {
+    // This Durable Object IS the container - it will run the Hono server
+    // Just forward the request to be handled by the container
+    return new Response('Container processing', {
       headers: { 'Content-Type': 'text/plain' }
     });
+  }
+}
+
+export default {
+  async fetch(request, env, ctx) {
+    // Get the Durable Object instance
+    const id = env.IMAGE_TRANSFORMER.idFromName("image-transformer");
+    const durableObject = env.IMAGE_TRANSFORMER.get(id);
+    
+    // Forward the request to the Durable Object container
+    return durableObject.fetch(request);
   },
 };
