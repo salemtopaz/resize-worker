@@ -1,16 +1,18 @@
 {
-  "name": "sharp-service",
+  "name": "image-transformer",
   "private": true,
   "type": "module",
   "version": "1.0.0",
-  "description": "Streaming image resize service powered by sharp",
+  "description": "Simple image resize service",
   "scripts": {
-    "start": "node server.js",
+    "start": "node --loader tsx/esm server.ts",
     "deploy": "wrangler deploy",
     "dev": "wrangler dev"
   },
   "dependencies": {
-    "@cloudflare/containers": "^0.0.28"
+    "hono": "^4.6.3",
+    "sharp": "^0.33.4",
+    "tsx": "^4.19.1"
   },
   "devDependencies": {
     "wrangler": "^4.38.0"

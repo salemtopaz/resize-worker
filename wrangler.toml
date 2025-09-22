@@ -1,21 +1,13 @@
-name = "sharp-service"
+name = "image-transformer"
 main = "src/index.js"
 compatibility_date = "2024-09-23"
-compatibility_flags = ["nodejs_compat"]
 
-[env.production]
-main = "container-src/index.js"
-
-[[durable_objects.bindings]]
-name = "SHARP_SERVICE"
-class_name = "SharpService"
-
-[[migrations]]
-tag = "v1"
-new_classes = ["SharpService"]
+[[services]]
+binding = "IMAGE_TRANSFORMER"
+service = "image-transformer-container"
 
 [[containers]]
-class_name = "SharpService"
+name = "image-transformer-container"
 image = "./Dockerfile"
 
 [observability]
