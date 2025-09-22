@@ -29,6 +29,17 @@ export class ImageTransformer {
       }
 
       try {
+        // Check if we're in local development (Sharp won't work)
+        if (typeof process !== 'undefined' && process.env && !process.env.CF_CONTAINER) {
+          return new Response(JSON.stringify({
+            message: "Sharp not available in local development",
+            note: "Deploy to production for actual image processing",
+            request: { url: imageUrl, width, height, format, quality }
+          }), {
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+
         // Fetch the image
         const response = await fetch(imageUrl);
         if (!response.ok) {
@@ -40,7 +51,7 @@ export class ImageTransformer {
 
         const imageBuffer = await response.arrayBuffer();
         
-        // Import Sharp dynamically (available in container)
+        // Import Sharp dynamically (available in deployed container)
         const sharp = (await import('sharp')).default;
         
         let transformer = sharp(imageBuffer)

@@ -15,5 +15,8 @@ new_classes = ["ImageTransformer"]
 class_name = "ImageTransformer"
 image = "./Dockerfile"
 
+[dev]
+enable_containers = false
+
 [observability]
 enabled = true
