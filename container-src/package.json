@@ -1,0 +1,10 @@
+{
+  "name": "sharp-service-container",
+  "private": true,
+  "type": "module",
+  "version": "1.0.0",
+  "description": "Container version with Sharp dependencies",
+  "dependencies": {
+    "sharp": "^0.33.4"
+  }
+}

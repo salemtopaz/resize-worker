@@ -3,6 +3,9 @@ main = "src/index.js"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
+[env.production]
+main = "container-src/index.js"
+
 [[durable_objects.bindings]]
 name = "SHARP_SERVICE"
 class_name = "SharpService"
